@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+  IMPORTANT
+  FAVORITE
+}
+
+model Users {
+  id         String       @id @default(uuid())
+  name       String
+  authId     String       @unique @map("auth_id")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+  deletedAt  DateTime?
+  auth       Auth         @relation(fields: [authId], references: [id])
+  Note       Notes[]
+  Categories Categories[]
+}
+
+model Auth {
+  id       String @id @unique @default(uuid())
+  email    String @unique
+  password String @unique @db.VarChar(32)
+  Users    Users?
+}
+
+model Notes {
+  id          String      @unique @default(uuid())
+  title       String
+  description String      @db.VarChar(250)
+  userId      String      @map("user_id")
+  priority    Priority
+  categoryId  String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  user        Users       @relation(fields: [userId], references: [id])
+  category    Categories? @relation(fields: [categoryId], references: [id])
+}
+
+model Categories {
+  id        String   @unique @default(uuid())
+  name      String
+  usersId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  user      Users    @relation(fields: [usersId], references: [id])
+  notes     Notes[]
+}
