@@ -1,13 +1,15 @@
-const { connection } = require('../connections/prisma.connection');
-const { compare, hash } = require('bcrypt');
+const { connection: prisma } = require('../connections/prisma.connection');
+const { hash } = require('bcrypt');
 const { decodeToken, generateToken } = require('../functions/jwt.functions');
+const verifyExistence = require('../functions/verify.existence');
+const { notFound } = require('@hapi/boom');
 
 class AuthService {
 
   async getUserByToken (token) {
     const decoded = decodeToken(token);
 
-    const user = await connection.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: {
         authId: decoded.sub,
       },
@@ -30,8 +32,25 @@ class AuthService {
     return user;
   }
 
+  async getByEmail (email) {
+    const getUserByEmail = await prisma.users.findUnique({
+      where: {
+        auth: {
+          email: email,
+        }
+      },
+      include: {
+        auth: true,
+      }
+    });
+    if(!getUserByEmail) 
+      throw new notFound('invalid credentials');
+
+    return getUserByEmail;
+  }
+
   async getUnique (id) {
-    const user = await connection.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: {
         id,
       },
@@ -56,7 +75,7 @@ class AuthService {
       password: hashPassword,
     };
 
-    const transaction = await connection.$transaction(async (tx) => {
+    const transaction = await prisma.$transaction(async (tx) => {
       const auth = await tx.auth.create({
         data: authData,
         select: {
@@ -84,12 +103,10 @@ class AuthService {
     return token;
   }
 
-  async editUser(token, data) {
-    const decoded = decodeToken(token);
-
-    const editAuth = await connection.auth.update({
+  async editUser(user, data) {
+    const editAuth = await prisma.auth.update({
       where: {
-        id: decoded.sub,
+        id: user.sub,
       },
       data: {
         email: data.email ? data.email : undefined,
@@ -98,9 +115,9 @@ class AuthService {
 
     delete data.email;
 
-    const editUser = await connection.users.update({
+    const editUser = await prisma.users.update({
       where: {
-        id: decoded.uid,
+        id: user.uid,
       },
       data: {
         ...data,
@@ -110,17 +127,17 @@ class AuthService {
     return "Updated Successfully";
   }
 
-  async deleteUser(token) {
-    const decoded = decodeToken(token);
+  async deleteUser(user) {
+    const userExists = await verifyExistence('users', user.uid, prisma);
 
-    const { id } = await connection.users.update({
-      where: {
-        id: decoded.uid
-      },
-      data: {
-        deletedAt: new Date().toISOStrin(),
-      },
-    });
+    if(!userExists) throw new Error('user does not exists');
+
+    await Promise.all([
+      prisma.users.delete({ where: { id: user.uid } }),
+      prisma.auth.delete({ where: { id: user.sub } }),
+      prisma.categories.deleteMany({ where: { userId: user.uid } }),
+      prisma.notes.deleteMany({ where: { userId: user.uid } }),
+    ]);
 
     return id;
   }

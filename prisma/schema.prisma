@@ -19,6 +19,11 @@ enum Priority {
   FAVORITE
 }
 
+enum ROLES {
+  USER
+  ADMIN
+}
+
 model Users {
   id         String       @id @default(uuid())
   name       String
@@ -34,6 +39,7 @@ model Users {
 model Auth {
   id       String @id @unique @default(uuid())
   email    String @unique
+  role     ROLES
   password String @unique @db.VarChar(32)
   Users    Users?
 }
@@ -54,9 +60,9 @@ model Notes {
 model Categories {
   id        String   @unique @default(uuid())
   name      String
-  usersId   String
+  userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
-  user      Users    @relation(fields: [usersId], references: [id])
+  user      Users    @relation(fields: [userId], references: [id])
   notes     Notes[]
 }
