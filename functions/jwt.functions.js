@@ -3,10 +3,10 @@ const { ServerConfig } = require('../config')
 
 const generateToken = (data) => {
   return sign({
-    sub: data.authId,
-    uid: data.userId,
+    sub: data.sub,
+    uid: data.uid,
     expiresIn: '30d', 
-  })
+  }, ServerConfig.JWT_SECRET, { expiresIn: '30d' });
 };
 
 const decodeToken = (token) => {

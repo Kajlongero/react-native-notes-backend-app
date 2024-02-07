@@ -12,16 +12,14 @@ const passportLocalStrategy = new Strategy({
   async (email, password, done) => {
     try{
       const user = await service.getByEmail(email);
+      if(!user) throw new unauthorized('invalid credentials');
 
-      if(user) throw new unauthorized('invalid credentials');
-      
-      const comparedPassword = await compare(password, user.password);
+      const comparedPassword = await compare(password, user.auth.password);
       if(!comparedPassword) throw new unauthorized('invalid credentials');
   
-      done(null, generateToken({
-        sub: user.auth.id,
-        uid: user.id,
-      }));
+      const opts = { sub: user.auth.id, uid: user.id }
+
+      done(null, generateToken(opts));
     }catch(e) {
       done(e, null)
     }    

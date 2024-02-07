@@ -1,17 +1,17 @@
 const { connection: prisma } = require('../connections/prisma.connection');
 const { hash } = require('bcrypt');
 const { decodeToken, generateToken } = require('../functions/jwt.functions');
+const { notFound, internal, conflict, badRequest } = require('@hapi/boom');
+const { unauthorized } = require('@hapi/boom');
 const verifyExistence = require('../functions/verify.existence');
-const { notFound } = require('@hapi/boom');
 
 class AuthService {
 
   async getUserByToken (token) {
     const decoded = decodeToken(token);
-
     const user = await prisma.users.findUnique({
       where: {
-        authId: decoded.sub,
+        id: decoded.uid,
       },
       select: {
         auth: {
@@ -20,33 +20,34 @@ class AuthService {
             email: true,
           }
         },
-        profile: {
-          select: {
-            firstName: true,
-            lastName: true,
-          }
-        }
+        name: true,
+        createdAt: true,
       }
     });
+    if(!user) notFound('invalid token');
 
     return user;
   }
 
   async getByEmail (email) {
-    const getUserByEmail = await prisma.users.findUnique({
+    const getUserByEmail = await prisma.auth.findUnique({
       where: {
-        auth: {
-          email: email,
-        }
+        email: email,
+      },
+    });
+    if(!getUserByEmail) 
+      throw new notFound('invalid credentials');
+
+    const user = await prisma.users.findUnique({
+      where: {
+        authId: getUserByEmail.id,
       },
       include: {
         auth: true,
       }
     });
-    if(!getUserByEmail) 
-      throw new notFound('invalid credentials');
 
-    return getUserByEmail;
+    return user;
   }
 
   async getUnique (id) {
@@ -68,39 +69,62 @@ class AuthService {
   }
 
   async createUser(data) {
-    const hashPassword = await hash(data, 10);
-
+    const hashPassword = await hash(data.password, 10);
+    
     const authData = {
       email: data.email,
       password: hashPassword,
     };
 
-    const transaction = await prisma.$transaction(async (tx) => {
+    const emailExists = await prisma.auth.findUnique({
+      where: {
+        email: data.email,
+      },
+      select: {
+        email: true,
+      }
+    });
+    if(emailExists) 
+      throw new conflict('email already used');
+    
+    const user = await prisma.$transaction(async (tx) => {
       const auth = await tx.auth.create({
-        data: authData,
+        data: {
+          ...authData,
+          userRole: 'USER',
+        },
         select: {
           id: true,
         }
       });
 
-      const user = await tx.auth.create({
+      const userCreated = await tx.users.create({
         data: {
+          username: data.username,
           authId: auth.id,
-        },
-        include: {
-          auth: true,
         },
       });
 
-      return user;
-    })
+      const userName = `${userCreated.username.charAt(0).toUpperCase()}${userCreated.username.substring(1, userCreated.username.length)}`
 
-    const token = generateToken({
-      sub: transaction.auth.id,
-      uid: transaction.id,
+      await tx.categories.create({
+        data: {
+          name: `${userName} defaults category`,
+          userId: userCreated.id,
+        },
+      });
+
+      return userCreated;
     });
 
-    return token;
+
+    const token = generateToken({
+      sub: user.authId,
+      uid: user.id,
+    });
+    return {
+      token: token,
+    };
   }
 
   async editUser(user, data) {
@@ -130,7 +154,7 @@ class AuthService {
   async deleteUser(user) {
     const userExists = await verifyExistence('users', user.uid, prisma);
 
-    if(!userExists) throw new Error('user does not exists');
+    if(!userExists) throw new unauthorized('user does not exists');
 
     await Promise.all([
       prisma.users.delete({ where: { id: user.uid } }),
@@ -139,9 +163,8 @@ class AuthService {
       prisma.notes.deleteMany({ where: { userId: user.uid } }),
     ]);
 
-    return id;
+    return user.uid;
   }
-
 }
 
 module.exports = AuthService;
