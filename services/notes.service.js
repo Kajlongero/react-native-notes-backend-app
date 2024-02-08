@@ -1,11 +1,10 @@
-const { unauthorized } = require('@hapi/boom');
-const { connection: prisma } = require('../connections/prisma.connection');
-const verifyExistence = require('../functions/verify.existence');
-const { internal } = require('@hapi/boom');
+const { unauthorized } = require("@hapi/boom");
+const { connection: prisma } = require("../connections/prisma.connection");
+const verifyExistence = require("../functions/verify.existence");
+const { internal } = require("@hapi/boom");
 
 class NoteService {
-
-  async findAll (token, skip, take) {
+  async findAll(token, skip, take) {
     const data = await prisma.notes.findMany({
       skip: parseInt(skip),
       take: parseInt(take),
@@ -15,9 +14,9 @@ class NoteService {
   }
 
   async findNotesByUser(user, skip, take) {
-    const userExist = await verifyExistence('users', user.uid, prisma);
-      if(!userExist) throw new Error('unauthorized'); 
-    
+    const userExist = await verifyExistence("users", user.uid, prisma);
+    if (!userExist) throw new Error("unauthorized");
+
     const data = await prisma.notes.findMany({
       where: {
         userId: user.uid,
@@ -30,8 +29,8 @@ class NoteService {
   }
 
   async findNotesByCategory(user, id, skip = 0, take = 30) {
-    const userExist = await verifyExistence('users', user.uid, prisma);
-    if(!userExist) throw new unauthorized('unauthorized');
+    const userExist = await verifyExistence("users", user.uid, prisma);
+    if (!userExist) throw new unauthorized("unauthorized");
 
     const data = await prisma.notes.findMany({
       where: {
@@ -44,94 +43,90 @@ class NoteService {
     return data;
   }
 
-  async findUnique (id, user) {
-    const noteExist = await verifyExistence('notes', id, prisma);
+  async findUnique(id, user) {
+    const noteExist = await verifyExistence("notes", id, prisma);
 
-    if(!noteExist) throw new Error('note does not exist');
+    if (!noteExist) throw new Error("note does not exist");
 
-    if(noteExist.userId !== user.uid && user.role !== 'ADMIN') 
-      throw new Error('unauthorized');
+    if (noteExist.userId !== user.uid && user.role !== "ADMIN")
+      throw new Error("unauthorized");
 
     return data;
   }
 
-  async create (user, body) {
+  async create(user, body) {
     const userExist = await prisma.users.findUnique({
       where: {
         id: user.uid,
         AND: {
           authId: user.sub,
-        }
+        },
       },
       select: {
         id: true,
-      }
+      },
     });
-    if(!userExist) 
-      throw new unauthorized('unauthorized');
+    if (!userExist) throw new unauthorized("unauthorized");
 
-    console.log(userExist.id);
-
-    try{
+    try {
       const note = await prisma.notes.create({
         data: {
           title: body.title,
           description: body.description,
           categoryId: body.categoryId,
-          priorityId: body.priorityId,          
+          priorityId: body.priorityId,
           userId: userExist.id,
           isFavorite: false,
         },
       });
-      
+
       return note;
-    }catch(e){
+    } catch (e) {
       throw new internal(e.message);
     }
   }
 
-  async update (id, user, dataUpd) {
-
+  async update(id, user, dataUpd) {
     const [notesExist, userExist] = await Promise.all([
       prisma.notes.findUnique({ where: { id } }),
       prisma.users.findUnique({ where: { id: user.uid } }),
     ]);
 
-    if(!userExist) throw new Error('user does not exists');
-    if(!notesExist) throw new Error('note does not exists');
+    if (!userExist) throw new Error("user does not exists");
+    if (!notesExist) throw new Error("note does not exists");
 
-    if(userExist.authId !== user.sub) throw new unauthorized('unauthorized');
+    if (userExist.authId !== user.sub) throw new unauthorized("unauthorized");
 
     const update = await prisma.notes.update({
       where: {
-        id
+        id,
       },
-      data: dataUpd
+      data: dataUpd,
     });
 
     return update;
   }
 
-  async destroy (id, user) {
+  async destroy(id, user) {
     const [notesExist, userExist] = await Promise.all([
       prisma.notes.findUnique({ where: { id } }),
       prisma.users.findUnique({ where: { id: user.uid } }),
     ]);
 
-    if(!userExist) throw new Error('user does not exists')
-    if(!notesExist) throw new Error('note does not exists')
+    if (!userExist) throw new Error("user does not exists");
+    if (!notesExist) throw new Error("note does not exists");
 
-    if(userExist.authId !== user.sub && user.role !== 'ADMIN') 
-      throw unauthorized('unauthorized');
+    if (userExist.authId !== user.sub && user.role !== "ADMIN")
+      throw unauthorized("unauthorized");
 
     const deleted = await prisma.notes.delete({
       where: {
-        id
+        id,
       },
     });
 
     return id;
   }
-};
+}
 
 module.exports = NoteService;
