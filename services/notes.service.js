@@ -1,7 +1,6 @@
-const { unauthorized } = require("@hapi/boom");
 const { connection: prisma } = require("../connections/prisma.connection");
+const { internal, unauthorized } = require("@hapi/boom");
 const verifyExistence = require("../functions/verify.existence");
-const { internal } = require("@hapi/boom");
 
 class NoteService {
   async findAll(token, skip, take) {
@@ -15,7 +14,7 @@ class NoteService {
 
   async findNotesByUser(user, skip, take) {
     const userExist = await verifyExistence("users", user.uid, prisma);
-    if (!userExist) throw new Error("unauthorized");
+    if (!userExist) throw new unauthorized("unauthorized");
 
     const data = await prisma.notes.findMany({
       where: {
@@ -46,10 +45,9 @@ class NoteService {
   async findUnique(id, user) {
     const noteExist = await verifyExistence("notes", id, prisma);
 
-    if (!noteExist) throw new Error("note does not exist");
+    if (!noteExist) throw new unauthorized("note does not exist");
 
-    if (noteExist.userId !== user.uid && user.role !== "ADMIN")
-      throw new Error("unauthorized");
+    if (noteExist.userId !== user.uid) throw new unauthorized("unauthorized");
 
     return data;
   }
@@ -92,8 +90,8 @@ class NoteService {
       prisma.users.findUnique({ where: { id: user.uid } }),
     ]);
 
-    if (!userExist) throw new Error("user does not exists");
-    if (!notesExist) throw new Error("note does not exists");
+    if (!userExist) throw new unauthorized("user does not exists");
+    if (!notesExist) throw new unauthorized("note does not exists");
 
     if (userExist.authId !== user.sub) throw new unauthorized("unauthorized");
 
@@ -113,11 +111,10 @@ class NoteService {
       prisma.users.findUnique({ where: { id: user.uid } }),
     ]);
 
-    if (!userExist) throw new Error("user does not exists");
-    if (!notesExist) throw new Error("note does not exists");
+    if (!userExist) throw new unauthorized("user does not exists");
+    if (!notesExist) throw new unauthorized("note does not exists");
 
-    if (userExist.authId !== user.sub && user.role !== "ADMIN")
-      throw unauthorized("unauthorized");
+    if (userExist.authId !== user.sub) throw unauthorized("unauthorized");
 
     const deleted = await prisma.notes.delete({
       where: {
