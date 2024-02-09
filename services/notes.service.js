@@ -56,9 +56,6 @@ class NoteService {
     const userExist = await prisma.users.findUnique({
       where: {
         id: user.uid,
-        AND: {
-          authId: user.sub,
-        },
       },
       select: {
         id: true,
@@ -66,13 +63,15 @@ class NoteService {
     });
     if (!userExist) throw new unauthorized("unauthorized");
 
+    const { title, description, categoryId, priorityId } = body;
+
     try {
       const note = await prisma.notes.create({
         data: {
-          title: body.title,
-          description: body.description,
-          categoryId: body.categoryId,
-          priorityId: body.priorityId,
+          title: title,
+          description: description,
+          categoryId: categoryId,
+          priorityId: parseInt(priorityId),
           userId: userExist.id,
           isFavorite: false,
         },
@@ -80,6 +79,7 @@ class NoteService {
 
       return note;
     } catch (e) {
+      console.log(e);
       throw new internal(e.message);
     }
   }

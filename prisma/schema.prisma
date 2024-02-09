@@ -45,7 +45,7 @@ model Auth {
 }
 
 model Notes {
-  id          String     @unique @default(uuid())
+  id          String     @id @unique @default(uuid())
   title       String
   description String     @db.VarChar(250)
   priorityId  Int        @map("priority_id")
