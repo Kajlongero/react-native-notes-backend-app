@@ -11,6 +11,24 @@ const { validateSchema } = require("../middlewares/joi.validator");
 const NoteService = require("../services/notes.service");
 const service = new NoteService();
 const successResponse = require("../responses/success.response");
+const { queryParametersSchema } = require("../models/query.model");
+
+router.get(
+  "/favorites",
+  validateSchema(queryParametersSchema, "query"),
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      const { limit, offset } = req.query;
+      const user = req.user;
+      const data = await service.getFavorites(user, limit, offset);
+
+      successResponse(res, [...data], "OK", 200);
+    } catch (e) {
+      next(e);
+    }
+  }
+);
 
 router.get(
   "/category/:id",
@@ -27,7 +45,7 @@ router.get(
         limit
       );
 
-      successResponse(res, getNotes, "OK", 200);
+      successResponse(res, [...getNotes], "OK", 200);
     } catch (e) {
       next(e);
     }

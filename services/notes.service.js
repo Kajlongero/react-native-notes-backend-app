@@ -1,23 +1,30 @@
 const { connection: prisma } = require("../connections/prisma.connection");
 const { internal, unauthorized } = require("@hapi/boom");
-const verifyExistence = require("../functions/verify.existence");
 const { notFound } = require("@hapi/boom");
 const { badRequest } = require("@hapi/boom");
-const { conflict } = require("@hapi/boom");
+const verifyExistence = require("../functions/verify.existence");
 
 class NoteService {
-  async findAll(token, skip, take) {
-    const data = await prisma.notes.findMany({
+  async getFavorites(user, take = 30, skip = 0) {
+    const userExist = await verifyExistence("users", user.uid, prisma);
+    if (!userExist) throw new unauthorized("unauthorized");
+
+    const notes = await prisma.notes.findMany({
+      where: {
+        userId: user.uid,
+        AND: {
+          isFavorite: true,
+        },
+      },
       skip: parseInt(skip),
       take: parseInt(take),
     });
 
-    return data;
+    return notes;
   }
 
-  async findNotesByUser(user, skip, take) {
+  async findNotesByUser(user, skip = 0, take = 30) {
     const userExist = await verifyExistence("users", user.uid, prisma);
-
     if (!userExist) throw new unauthorized("unauthorized");
 
     const data = await prisma.notes.findMany({
@@ -32,8 +39,10 @@ class NoteService {
   }
 
   async findNotesByCategory(user, id, skip = 0, take = 30) {
-    const userExist = await verifyExistence("users", user.uid, prisma);
-    const categoryExist = await verifyExistence("categories", id, prisma);
+    const [userExist, categoryExist] = await Promise.all([
+      verifyExistence("users", user.uid, prisma),
+      verifyExistence("categories", id, prisma),
+    ]);
 
     if (!userExist) throw new unauthorized("unauthorized");
     if (!categoryExist) throw new notFound("category does not exists");
@@ -44,6 +53,9 @@ class NoteService {
       },
       skip: parseInt(skip),
       take: parseInt(take),
+      orderBy: {
+        priorityId: "desc",
+      },
     });
 
     return data;
@@ -53,10 +65,9 @@ class NoteService {
     const noteExist = await verifyExistence("notes", id, prisma);
 
     if (!noteExist) throw new unauthorized("note does not exist");
-
     if (noteExist.userId !== user.uid) throw new unauthorized("unauthorized");
 
-    return data;
+    return noteExist;
   }
 
   async create(user, body) {
