@@ -10,7 +10,7 @@ const authRoute = Router();
 
 authRoute.get(
   "/user-by-token",
-  passport.authenticate("jwt"),
+  passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
       const user = req.user;
