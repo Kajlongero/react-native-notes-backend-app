@@ -7,7 +7,7 @@ class CategoryService {
     const userExist = await verifyExistence("users", user.uid, prisma);
     if (!userExist) throw new unauthorized();
 
-    const categories = await prisma.categories.findMany({
+    const query = {
       where: {
         userId: user.uid,
       },
@@ -16,9 +16,20 @@ class CategoryService {
       orderBy: {
         createdAt: "asc",
       },
-    });
+    };
 
-    return categories;
+    const [categories, count] = await prisma.$transaction([
+      prisma.categories.findMany(query),
+      prisma.categories.count({ where: query.where }),
+    ]);
+
+    return {
+      data: categories,
+      pagination: {
+        total: count,
+        left: count - parseInt(skip) <= 0 ? 0 : count - parseInt(skip),
+      },
+    };
   }
 
   async getAll(skip, take) {
@@ -30,8 +41,8 @@ class CategoryService {
   }
 
   async getUniqueCategory(id, user) {
-    const [categoryExist, userExist] = await Promise.all([
-      prisma.categories.findUnique({ where: { id }, include: { notes: true } }),
+    const [categoryExist, userExist] = await prisma.$transaction([
+      prisma.categories.findUnique({ where: { id } }),
       prisma.users.findUnique({ where: { id: user.uid } }),
     ]);
 
@@ -89,7 +100,7 @@ class CategoryService {
     if (!category) throw new Error("category does not exists");
     if (category.userId !== user.uid) throw new Error("unauthorized");
 
-    const deleted = Promise.all([
+    const deleted = await prisma.$transaction([
       prisma.categories.delete({ where: { id } }),
       prisma.notes.deleteMany({ where: { categoryId: id } }),
     ]);

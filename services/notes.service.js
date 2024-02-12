@@ -9,7 +9,7 @@ class NoteService {
     const userExist = await verifyExistence("users", user.uid, prisma);
     if (!userExist) throw new unauthorized("unauthorized");
 
-    const notes = await prisma.notes.findMany({
+    const query = {
       where: {
         userId: user.uid,
         AND: {
@@ -18,36 +18,58 @@ class NoteService {
       },
       skip: parseInt(skip),
       take: parseInt(take),
-    });
+    };
 
-    return notes;
+    const [notes, count] = await prisma.$transaction([
+      prisma.notes.findMany(query),
+      prisma.notes.count({ where: query.where }),
+    ]);
+
+    return {
+      data: notes,
+      pagination: {
+        count: count,
+        left: count - parseInt(skip) <= 0 ? 0 : count - parseInt(skip),
+      },
+    };
   }
 
   async findNotesByUser(user, skip = 0, take = 30) {
     const userExist = await verifyExistence("users", user.uid, prisma);
     if (!userExist) throw new unauthorized("unauthorized");
 
-    const data = await prisma.notes.findMany({
+    const query = {
       where: {
         userId: user.uid,
       },
       skip: parseInt(skip),
       take: parseInt(take),
-    });
+    };
 
-    return data;
+    const [notes, count] = await prisma.$transaction([
+      prisma.notes.findMany(query),
+      prisma.notes.count({ where: query.where }),
+    ]);
+
+    return {
+      data: notes,
+      pagination: {
+        count: count,
+        left: count - parseInt(skip) <= 0 ? 0 : count - parseInt(skip),
+      },
+    };
   }
 
   async findNotesByCategory(user, id, skip = 0, take = 30) {
-    const [userExist, categoryExist] = await Promise.all([
-      verifyExistence("users", user.uid, prisma),
-      verifyExistence("categories", id, prisma),
+    const [userExist, categoryExist] = await prisma.$transaction([
+      prisma.users.findUnique({ where: { id: user.uid } }),
+      prisma.categories.findUnique({ where: { id } }),
     ]);
 
     if (!userExist) throw new unauthorized("unauthorized");
     if (!categoryExist) throw new notFound("category does not exists");
 
-    const data = await prisma.notes.findMany({
+    const query = {
       where: {
         categoryId: id,
       },
@@ -56,9 +78,20 @@ class NoteService {
       orderBy: {
         priorityId: "desc",
       },
-    });
+    };
 
-    return data;
+    const [notes, count] = await prisma.$transaction([
+      prisma.notes.findMany(query),
+      prisma.notes.count(query.where),
+    ]);
+
+    return {
+      data: notes,
+      pagination: {
+        total: count,
+        left: count - parseInt(skip) <= 0 ? 0 : count - parseInt(skip),
+      },
+    };
   }
 
   async findUnique(id, user) {
@@ -73,20 +106,21 @@ class NoteService {
   async create(user, body) {
     const { title, description, categoryId, priorityId } = body;
 
-    const [userExist, categoryExist, priorityExists] = await Promise.all([
-      prisma.users.findUnique({
-        where: { id: user.uid },
-        select: { id: true },
-      }),
-      prisma.categories.findUnique({
-        where: { id: categoryId },
-        select: { id: true },
-      }),
-      prisma.priorities.findUnique({
-        where: { id: priorityId },
-        select: { id: true },
-      }),
-    ]);
+    const [userExist, categoryExist, priorityExists] =
+      await prisma.$transaction([
+        prisma.users.findUnique({
+          where: { id: user.uid },
+          select: { id: true },
+        }),
+        prisma.categories.findUnique({
+          where: { id: categoryId },
+          select: { id: true },
+        }),
+        prisma.priorities.findUnique({
+          where: { id: priorityId },
+          select: { id: true },
+        }),
+      ]);
 
     if (!userExist) throw new unauthorized("unauthorized");
     if (!categoryExist) throw new notFound("category not found");
@@ -106,13 +140,12 @@ class NoteService {
 
       return note;
     } catch (e) {
-      console.log(e);
       throw new internal(e.message);
     }
   }
 
   async update(id, user, dataUpd) {
-    const [notesExist, userExist] = await Promise.all([
+    const [notesExist, userExist] = await prisma.$transaction([
       prisma.notes.findUnique({ where: { id } }),
       prisma.users.findUnique({ where: { id: user.uid } }),
     ]);
@@ -133,7 +166,7 @@ class NoteService {
   }
 
   async destroy(id, user) {
-    const [notesExist, userExist] = await Promise.all([
+    const [notesExist, userExist] = await prisma.$transaction([
       prisma.notes.findUnique({ where: { id } }),
       prisma.users.findUnique({ where: { id: user.uid } }),
     ]);

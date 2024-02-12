@@ -4,6 +4,7 @@ const { generateToken } = require("../functions/jwt.functions");
 const { notFound, conflict } = require("@hapi/boom");
 const { unauthorized } = require("@hapi/boom");
 const verifyExistence = require("../functions/verify.existence");
+const { forbidden } = require("joi");
 
 class AuthService {
   async getUserByToken(user) {
@@ -141,35 +142,33 @@ class AuthService {
   }
 
   async editUser(user, data) {
-    const editAuth = await prisma.auth.update({
+    const { username } = data;
+
+    const userData = await prisma.users.findUnique({
       where: {
-        id: user.sub,
-      },
-      data: {
-        email: data.email ? data.email : undefined,
+        id: user.uid,
       },
     });
 
-    delete data.email;
+    if (!userData) throw new forbidden("you can not perform this action");
 
-    const editUser = await prisma.users.update({
+    const updated = await prisma.users.update({
       where: {
         id: user.uid,
       },
       data: {
-        ...data,
+        username: username,
       },
     });
 
-    return "Updated Successfully";
+    return updated;
   }
 
   async deleteUser(user) {
     const userExists = await verifyExistence("users", user.uid, prisma);
-
     if (!userExists) throw new unauthorized("user does not exists");
 
-    await Promise.all([
+    await prisma.$transaction([
       prisma.users.delete({ where: { id: user.uid } }),
       prisma.auth.delete({ where: { id: user.sub } }),
       prisma.categories.deleteMany({ where: { userId: user.uid } }),
