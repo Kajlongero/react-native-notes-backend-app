@@ -6,11 +6,13 @@ const { unauthorized } = require("@hapi/boom");
 const verifyExistence = require("../functions/verify.existence");
 
 class AuthService {
-  async getUserByToken(token) {
-    const decoded = decodeToken(token);
+  async getUserByToken(user) {
     const user = await prisma.users.findUnique({
       where: {
-        id: decoded.uid,
+        id: user.uid,
+        AND: {
+          authId: user.sub,
+        },
       },
       select: {
         auth: {

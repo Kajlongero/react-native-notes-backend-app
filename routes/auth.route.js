@@ -8,17 +8,20 @@ const instance = new AuthService();
 
 const authRoute = Router();
 
-authRoute.get("/user-by-token", async (req, res, next) => {
-  try {
-    const token = req.headers.authorization;
-    const rawToken = token.replace("Bearer ", "");
+authRoute.get(
+  "/user-by-token",
+  passport.authenticate("jwt"),
+  async (req, res, next) => {
+    try {
+      const user = req.user;
 
-    const exists = await instance.getUserByToken(rawToken);
-    successResponse(res, { user: { ...exists } }, "OK", 200);
-  } catch (e) {
-    next(e);
+      const exists = await instance.getUserByToken(user);
+      successResponse(res, { user: { ...exists } }, "OK", 200);
+    } catch (e) {
+      next(e);
+    }
   }
-});
+);
 
 authRoute.post(
   "/login",
