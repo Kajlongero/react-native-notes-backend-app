@@ -1,13 +1,13 @@
 const { connection: prisma } = require("../connections/prisma.connection");
 const { hash } = require("bcrypt");
-const { decodeToken, generateToken } = require("../functions/jwt.functions");
-const { notFound, internal, conflict, badRequest } = require("@hapi/boom");
+const { generateToken } = require("../functions/jwt.functions");
+const { notFound, conflict } = require("@hapi/boom");
 const { unauthorized } = require("@hapi/boom");
 const verifyExistence = require("../functions/verify.existence");
 
 class AuthService {
   async getUserByToken(user) {
-    const user = await prisma.users.findUnique({
+    const users = await prisma.users.findUnique({
       where: {
         id: user.uid,
         AND: {
@@ -25,9 +25,9 @@ class AuthService {
         createdAt: true,
       },
     });
-    if (!user) notFound("invalid token");
+    if (!users) throw notFound("invalid token");
 
-    return user;
+    return users;
   }
 
   async getByEmail(email) {
@@ -36,7 +36,7 @@ class AuthService {
         email: email,
       },
     });
-    if (!getUserByEmail) throw new notFound("invalid credentials");
+    if (!getUserByEmail) throw notFound("invalid credentials");
 
     const user = await prisma.users.findUnique({
       where: {
@@ -84,7 +84,17 @@ class AuthService {
         email: true,
       },
     });
-    if (emailExists) throw new conflict("email already used");
+    if (emailExists) throw conflict("email already used");
+
+    const usernameTaken = await prisma.users.findUnique({
+      where: {
+        username: data.username,
+      },
+      select: {
+        id: true,
+      },
+    });
+    if (usernameTaken) throw conflict("username already taken");
 
     const user = await prisma.$transaction(async (tx) => {
       const auth = await tx.auth.create({
@@ -157,7 +167,7 @@ class AuthService {
   async deleteUser(user) {
     const userExists = await verifyExistence("users", user.uid, prisma);
 
-    if (!userExists) throw new unauthorized("user does not exists");
+    if (!userExists) throw unauthorized("user does not exists");
 
     await Promise.all([
       prisma.users.delete({ where: { id: user.uid } }),
