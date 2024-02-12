@@ -7,7 +7,7 @@ const verifyExistence = require("../functions/verify.existence");
 class NoteService {
   async getFavorites(user, take = 30, skip = 0) {
     const userExist = await verifyExistence("users", user.uid, prisma);
-    if (!userExist) throw unauthorized("unauthorized");
+    if (!userExist) throw new unauthorized("unauthorized");
 
     const notes = await prisma.notes.findMany({
       where: {
@@ -25,7 +25,7 @@ class NoteService {
 
   async findNotesByUser(user, skip = 0, take = 30) {
     const userExist = await verifyExistence("users", user.uid, prisma);
-    if (!userExist) throw unauthorized("unauthorized");
+    if (!userExist) throw new unauthorized("unauthorized");
 
     const data = await prisma.notes.findMany({
       where: {
@@ -44,8 +44,8 @@ class NoteService {
       verifyExistence("categories", id, prisma),
     ]);
 
-    if (!userExist) throw unauthorized("unauthorized");
-    if (!categoryExist) throw notFound("category does not exists");
+    if (!userExist) throw new unauthorized("unauthorized");
+    if (!categoryExist) throw new notFound("category does not exists");
 
     const data = await prisma.notes.findMany({
       where: {
@@ -64,8 +64,8 @@ class NoteService {
   async findUnique(id, user) {
     const noteExist = await verifyExistence("notes", id, prisma);
 
-    if (!noteExist) throw unauthorized("note does not exist");
-    if (noteExist.userId !== user.uid) throw unauthorized("unauthorized");
+    if (!noteExist) throw new unauthorized("note does not exist");
+    if (noteExist.userId !== user.uid) throw new unauthorized("unauthorized");
 
     return noteExist;
   }
@@ -88,9 +88,9 @@ class NoteService {
       }),
     ]);
 
-    if (!userExist) throw unauthorized("unauthorized");
-    if (!categoryExist) throw notFound("category not found");
-    if (!priorityExists) throw badRequest("invalid priority id");
+    if (!userExist) throw new unauthorized("unauthorized");
+    if (!categoryExist) throw new notFound("category not found");
+    if (!priorityExists) throw new badRequest("invalid priority id");
 
     try {
       const note = await prisma.notes.create({
@@ -107,7 +107,7 @@ class NoteService {
       return note;
     } catch (e) {
       console.log(e);
-      throw internal(e.message);
+      throw new internal(e.message);
     }
   }
 
@@ -117,10 +117,10 @@ class NoteService {
       prisma.users.findUnique({ where: { id: user.uid } }),
     ]);
 
-    if (!userExist) throw unauthorized("user does not exists");
-    if (!notesExist) throw unauthorized("note does not exists");
+    if (!userExist) throw new unauthorized("user does not exists");
+    if (!notesExist) throw new unauthorized("note does not exists");
 
-    if (userExist.authId !== user.sub) throw unauthorized("unauthorized");
+    if (userExist.authId !== user.sub) throw new unauthorized("unauthorized");
 
     const update = await prisma.notes.update({
       where: {
@@ -138,10 +138,10 @@ class NoteService {
       prisma.users.findUnique({ where: { id: user.uid } }),
     ]);
 
-    if (!userExist) throw unauthorized("user does not exists");
-    if (!notesExist) throw unauthorized("note does not exists");
+    if (!userExist) throw new unauthorized("user does not exists");
+    if (!notesExist) throw new unauthorized("note does not exists");
 
-    if (userExist.authId !== user.sub) throw unauthorized("unauthorized");
+    if (userExist.authId !== user.sub) throw new unauthorized("unauthorized");
 
     const deleted = await prisma.notes.delete({
       where: {

@@ -25,7 +25,7 @@ class AuthService {
         createdAt: true,
       },
     });
-    if (!users) throw notFound("invalid token");
+    if (!users) throw new notFound("invalid token");
 
     return users;
   }
@@ -36,7 +36,7 @@ class AuthService {
         email: email,
       },
     });
-    if (!getUserByEmail) throw notFound("invalid credentials");
+    if (!getUserByEmail) throw new notFound("invalid credentials");
 
     const user = await prisma.users.findUnique({
       where: {
@@ -84,7 +84,7 @@ class AuthService {
         email: true,
       },
     });
-    if (emailExists) throw conflict("email already used");
+    if (emailExists) throw new conflict("email already used");
 
     const usernameTaken = await prisma.users.findUnique({
       where: {
@@ -94,7 +94,7 @@ class AuthService {
         id: true,
       },
     });
-    if (usernameTaken) throw conflict("username already taken");
+    if (usernameTaken) throw new conflict("username already taken");
 
     const user = await prisma.$transaction(async (tx) => {
       const auth = await tx.auth.create({
@@ -167,7 +167,7 @@ class AuthService {
   async deleteUser(user) {
     const userExists = await verifyExistence("users", user.uid, prisma);
 
-    if (!userExists) throw unauthorized("user does not exists");
+    if (!userExists) throw new unauthorized("user does not exists");
 
     await Promise.all([
       prisma.users.delete({ where: { id: user.uid } }),
