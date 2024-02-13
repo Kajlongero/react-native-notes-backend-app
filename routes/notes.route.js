@@ -41,11 +41,11 @@ router.get(
       const getNotes = await service.findNotesByCategory(
         req.user,
         id,
-        offset,
-        limit
+        offset ?? 0,
+        limit ?? 30
       );
 
-      successResponse(res, [...getNotes], "OK", 200);
+      successResponse(res, getNotes, "OK", 200);
     } catch (e) {
       next(e);
     }

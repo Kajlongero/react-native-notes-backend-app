@@ -82,8 +82,10 @@ class NoteService {
 
     const [notes, count] = await prisma.$transaction([
       prisma.notes.findMany(query),
-      prisma.notes.count(query.where),
+      prisma.notes.count({ where: query.where }),
     ]);
+
+    console.log(notes, count);
 
     return {
       data: notes,
