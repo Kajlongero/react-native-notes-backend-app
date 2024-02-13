@@ -23,7 +23,7 @@ router.get(
       const user = req.user;
       const data = await service.getFavorites(user, limit, offset);
 
-      successResponse(res, [...data], "OK", 200);
+      successResponse(res, data, "OK", 200);
     } catch (e) {
       next(e);
     }
