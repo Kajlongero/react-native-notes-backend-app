@@ -85,8 +85,6 @@ class NoteService {
       prisma.notes.count({ where: query.where }),
     ]);
 
-    console.log(notes, count);
-
     return {
       data: notes,
       pagination: {

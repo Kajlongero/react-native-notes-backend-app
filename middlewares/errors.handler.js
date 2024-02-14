@@ -11,7 +11,7 @@ const BoomErrorHandler = (err, req, res, next) => {
 
 const InternalServerHandler = (err, req, res, next) => {
   res.status(500).json({
-    message: err.message,
+    message: "Internal Server error",
     statusCode: 500,
   });
 };

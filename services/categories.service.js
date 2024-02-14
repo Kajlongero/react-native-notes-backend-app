@@ -101,8 +101,8 @@ class CategoryService {
     if (category.userId !== user.uid) throw new Error("unauthorized");
 
     const deleted = await prisma.$transaction([
-      prisma.categories.delete({ where: { id } }),
       prisma.notes.deleteMany({ where: { categoryId: id } }),
+      prisma.categories.delete({ where: { id } }),
     ]);
 
     return id;
