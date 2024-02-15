@@ -165,14 +165,14 @@ class AuthService {
   }
 
   async deleteUser(user) {
-    const userExists = await verifyExistence("users", user.uid, prisma);
+    const userExists = await verifyExistence("auth", user.sub, prisma);
     if (!userExists) throw new unauthorized("user does not exists");
 
     await prisma.$transaction([
-      prisma.users.delete({ where: { id: user.uid } }),
-      prisma.auth.delete({ where: { id: user.sub } }),
-      prisma.categories.deleteMany({ where: { userId: user.uid } }),
       prisma.notes.deleteMany({ where: { userId: user.uid } }),
+      prisma.categories.deleteMany({ where: { userId: user.uid } }),
+      prisma.users.delete({ where: { authId: userExists.id } }),
+      prisma.auth.delete({ where: { id: userExists.id } }),
     ]);
 
     return user.uid;
