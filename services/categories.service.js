@@ -27,7 +27,12 @@ class CategoryService {
       data: categories,
       pagination: {
         total: count,
-        left: count - parseInt(skip) <= 0 ? 0 : count - parseInt(skip),
+        left:
+          skip === 0
+            ? 0
+            : count - parseInt(skip) <= 0
+            ? 0
+            : count - parseInt(skip),
       },
     };
   }

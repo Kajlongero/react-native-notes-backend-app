@@ -16,8 +16,8 @@ class NoteService {
           isFavorite: true,
         },
       },
-      skip: parseInt(skip),
       take: parseInt(take),
+      skip: parseInt(skip),
     };
 
     const [notes, count] = await prisma.$transaction([
@@ -29,7 +29,12 @@ class NoteService {
       data: notes,
       pagination: {
         count: count,
-        left: count - parseInt(skip) <= 0 ? 0 : count - parseInt(skip),
+        left:
+          skip === 0
+            ? 0
+            : count - parseInt(skip) <= 0
+            ? 0
+            : count - parseInt(skip),
       },
     };
   }
@@ -55,7 +60,12 @@ class NoteService {
       data: notes,
       pagination: {
         count: count,
-        left: count - parseInt(skip) <= 0 ? 0 : count - parseInt(skip),
+        left:
+          skip === 0
+            ? 0
+            : count - parseInt(skip) <= 0
+            ? 0
+            : count - parseInt(skip),
       },
     };
   }
@@ -89,7 +99,12 @@ class NoteService {
       data: notes,
       pagination: {
         total: count,
-        left: count - parseInt(skip) <= 0 ? 0 : count - parseInt(skip),
+        left:
+          skip === 0
+            ? 0
+            : count - parseInt(skip) <= 0
+            ? 0
+            : count - parseInt(skip),
       },
     };
   }
